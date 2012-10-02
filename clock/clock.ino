@@ -1,3 +1,8 @@
+#include <util/delay.h>
+#define F_CPU 100000UL
+
+char *str = " 21:44:32 ";
+
 unsigned char font[6][48] = {  // ASCII range 32-127, starts at 32, 4 bits per row (-> 96/2 = 48 bytes for 96 chars), 6 rows.
   {0x04, 0xaa, 0xad, 0x44, 0x24, 0x00, 0x00, 0x01, 0x64, 0x66, 0x2f, 0x7f, 0x66, 0x00, 0x00, 0x06, 0x66, 0xe6, 0xef, 0xf6, 0x9e, 0x79, 0x89, 0x96, 0xe6, 0xe7, 0xf9, 0x99, 0x99, 0xf6, 0x86, 0x40, 0x40, 0x80, 0x10, 0x60, 0x84, 0x18, 0xc0, 0x00, 0x00, 0x00, 0x40, 0x00, 0x00, 0x06, 0x46, 0x0f},
   {0x04, 0xaf, 0xed, 0xa4, 0x42, 0xa4, 0x00, 0x01, 0x9c, 0x99, 0x68, 0x81, 0x99, 0x00, 0x3f, 0xc9, 0x99, 0x99, 0x98, 0x89, 0x94, 0x1a, 0x8f, 0x99, 0x99, 0x98, 0x49, 0x99, 0x99, 0x19, 0x82, 0xa0, 0x26, 0x86, 0x16, 0x97, 0x80, 0x09, 0x4d, 0xe6, 0xe7, 0xe7, 0x49, 0x99, 0x99, 0xf4, 0x42, 0x59},
@@ -30,14 +35,12 @@ void imageFromString(char *str, int pixoffset)
      for (int y = 0; y < 6; y++)
      {
        char bits = font[y][c >> 1];
-       bits &= 0x80 >> (((c & 0x1) << 2) | (x & 0x3));   // build a number by multiplying the lsb of the char by four, and then adding the (string pos->) x % 4 of the pixel. This is the bit offset of the pixel we need; mask this from our bit chunk.
-       if (bits)                                      // check if our masked bit is true
-         image[y] |= 1 << (6 - px);                   // set this pixel to true (the whole thing was cleared earlier, no need to set to 0 if not true.)
+       bits &= 0x80 >> (((c & 0x1) << 2) | (x & 0x3));  // build a number by multiplying the lsb of the char by four, and then adding the (string pos->) x % 4 of the pixel. This is the bit offset of the pixel we need; mask this from our bit chunk.
+       if (bits)                                        // check if our masked bit is true
+         image[y] |= 0x80 >> px;                        // set this pixel to true (the whole thing was cleared earlier, no need to set to 0 if not true.)
      }
   }
 }
- 
- 
        
 void display()
 {
@@ -46,11 +49,11 @@ void display()
   {
     PORTD = image[i];
     PORTC = ~(0x01 << i);
-    volatile char i = 1;
-    while (i) ++i;
-    PORTC = 0x00;
+    _delay_us(50);
+    PORTC = 0xff;
   }
 }
+
 void setup()
 {
   DDRC = 0x3f;
@@ -60,10 +63,10 @@ void setup()
 
 void loop()
 {
-  for(int x = -1; x < 60; x++)
+  for(int x = 0; x < strlen(str) * 5 - 5; x++)
   {
-    imageFromString("Hello world!", x);
-    for (int i = 0; i < 10; i++)
+    imageFromString(str, x);
+    for (int i = 0; i < 20; i++)
     {
       display();
     }
