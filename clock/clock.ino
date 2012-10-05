@@ -47,8 +47,8 @@ void display()
   // switch on each row in turn, and push out the columns:
   for(int i = 0; i < 6; i++)
   {
-    PORTD = image[i];
-    PORTC = ~(0x01 << i);
+    PORTC = image[i];
+    PORTB = ~(0x01 << i);
     _delay_us(50);
     PORTC = 0xff;
   }
