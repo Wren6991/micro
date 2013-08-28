@@ -1,9 +1,30 @@
 // PORTD: bit 7 -> |Bt7|Bt6|Bt5|Bt4|Bt3|Bt2|Bt1|Bt0| -> bit 0
 // PORTC: bit 5 ->         | - | - |Lrn|LED|IRo|IRi|
 
+#include <EEPROM.h>
+
 #define BUFFER_LENGTH 64
 uint8_t irbuffer[BUFFER_LENGTH];
 bool irout_enable;
+uint8_t current_file;
+
+void loadfile(uint8_t filenum)
+{
+  if (current_file == filenum)
+    return;
+  uint16_t address = BUFFER_LENGTH * (uint16_t)filenum;
+  for (uint8_t i = 0; i < BUFFER_LENGTH; i++, address++)
+    irbuffer[i] = EEPROM.read(address);
+  current_file = filenum;
+}
+
+void savefile(uint8_t filenum)
+{
+  uint16_t address = BUFFER_LENGTH * (uint16_t)filenum;
+  for (uint8_t i = 0; i < BUFFER_LENGTH; i++, address++)
+    EEPROM.write(address, irbuffer[i]);
+  current_file = filenum;
+}
 
 void setup()
 {
@@ -27,6 +48,7 @@ void setup()
   TCCR1B |= 1 << CS10;   // no prescale
   TIMSK1 |= 1 << OCIE1A; // enable timer output compare interrupt
   interrupts();
+  loadfile(0);
 }
 
 ISR(TIMER1_COMPA_vect)
@@ -34,7 +56,7 @@ ISR(TIMER1_COMPA_vect)
   if (irout_enable)
     PORTC ^= 0x02;
   else
-    PORTC &`= ~0x02;
+    PORTC &= ~0x02;
 }
 
 void loop()
@@ -42,10 +64,11 @@ void loop()
   if (PIND == 0xff) // no function buttons pressed
     return;
   uint8_t function_number = 0;
-  while (!((PIND >> function_number) & 0x01))
+  while ((PIND >> function_number) & 0x01)
     function_number++;
   if (PINC & 0x08) // learn button not pressed
   {
+    loadfile(function_number);
     PINC |= 0x04; // switch LED on
     for (uint8_t i = 0; i < BUFFER_LENGTH; i++)
     {
@@ -75,7 +98,7 @@ void loop()
       }
       irbuffer[i] = ~c;
     }
-    delay(100);
+    savefile(function_number);
     PORTC &= ~0x04;
   }
   delay(20);
